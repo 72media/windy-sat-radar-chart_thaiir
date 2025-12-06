@@ -1,0 +1,889 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <title>SE Asia & Indian Ocean Infrared Channels</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    html, body { margin:0; height:100%; }
+    #map { width:100%; height:100%; }
+
+    /* กล่องวัน-เวลาไทย กึ่งกลางด้านบน */
+    .datetime-box {
+      position:absolute;
+      top:10px;
+      left:50%;
+      transform:translateX(-50%);
+      background:linear-gradient(135deg, rgba(0,0,0,0.7), rgba(0,0,0,0.4));
+      color:#fff;
+      padding:6px 14px;
+      border-radius:8px;
+      font-size:1rem;
+      font-family:sans-serif;
+      z-index:10001;
+      pointer-events:none;
+      box-shadow:0 2px 6px rgba(0,0,0,0.4);
+    }
+
+    .panel {
+      position:absolute;
+      top:60px;
+      right:10px;
+      background:rgba(15,20,35,0.9);
+      padding:15px;
+      border-radius:8px;
+      color:#eee;
+      font-family:sans-serif;
+      max-width:280px;
+      z-index:9999;
+      max-height:80vh;
+      overflow-y:auto;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    .panel.hidden { 
+      transform: translateX(100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .panel-left {
+      position:absolute;
+      top:60px;
+      left:10px;
+      background:rgba(15,20,35,0.9);
+      padding:15px;
+      border-radius:8px;
+      color:#eee;
+      font-family:sans-serif;
+      max-width:280px;
+      z-index:9999;
+      max-height:80vh;
+      overflow-y:auto;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    .panel-left.hidden { 
+      transform: translateX(-100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .panel-section {
+      margin-bottom:15px;
+      padding-bottom:10px;
+      border-bottom:1px solid rgba(255,255,255,0.2);
+    }
+    
+    .panel-section:last-child {
+      border-bottom:none;
+      margin-bottom:0;
+    }
+    
+    .panel-section h3 {
+      margin:0 0 12px 0;
+      font-size:1rem;
+      color:#fff;
+    }
+
+    .layer-control { margin-bottom:10px; }
+    .layer-control label {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:.5rem;
+      font-size:.9rem;
+    }
+    input[type=range] { flex:1; }
+    button {
+      width:100%;
+      padding:8px;
+      margin-top:8px;
+      border:none;
+      border-radius:6px;
+      background:#2a4d9c;
+      color:#fff;
+      font-weight:600;
+      cursor:pointer;
+      transition:background 0.2s;
+    }
+    button:hover { background:#3d6ed1; }
+    .timer {
+      display:block;
+      margin-top:8px;
+      font-size:0.85rem;
+      color:#bbb;
+      text-align:center;
+    }
+
+    /* สไตล์สำหรับ Toggle Switch */
+    .toggle-container {
+      position: absolute;
+      top: 10px;
+      right: 180px;
+      display: flex;
+      align-items: center;
+      background: rgba(15,20,35,0.9);
+      padding: 6px 12px;
+      border-radius: 20px;
+      z-index: 10000;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    
+    .toggle-container-left {
+      position: absolute;
+      top: 10px;
+      left: 50px;
+      display: flex;
+      align-items: center;
+      background: rgba(15,20,35,0.9);
+      padding: 6px 12px;
+      border-radius: 20px;
+      z-index: 10000;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    
+    .toggle-label {
+      color: #fff;
+      font-size: 0.9rem;
+      margin-right: 8px;
+      font-family: sans-serif;
+    }
+    
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+    }
+    
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #666;
+      transition: .4s;
+      border-radius: 24px;
+    }
+    
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+      background-color: #2a4d9c;
+    }
+    
+    input:checked + .toggle-slider:before {
+      transform: translateX(26px);
+    }
+    
+    /* กล่องข้อมูลด้านล่างซ้าย */
+    .info-box {
+      position:absolute;
+      bottom:20px;
+      left:10px;
+      background:rgba(15,20,35,0.9);
+      color:#eee;
+      padding:10px;
+      border-radius:8px;
+      font-family:sans-serif;
+      font-size:0.9rem;
+      z-index:1000;
+      max-width:300px;
+    }
+    
+    .radar-opacity-control {
+      margin-top: 8px;
+      margin-bottom: 12px;
+    }
+    
+    .radar-opacity-control label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 0.8rem;
+      color: #ccc;
+    }
+    
+    .radar-opacity-control input[type="range"] {
+      width: 100%;
+    }
+
+    /* สไตล์สำหรับ Windy Iframe Container - แก้ไขการซ่อนเมื่อปิดอย่างสมบูรณ์ */
+    .windy-iframe-container {
+        position: absolute;
+        top: 50%;           
+        left: 50%;          
+        transform: translate(-50%, -50%); 
+        width: 1200px;       
+        height: 800px;      
+        border-radius: 8px;
+        overflow: hidden;
+        z-index: 9998; 
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+        border: 2px solid #2a4d9c;
+        transition: opacity 0.3s ease, visibility 0.3s ease; 
+        
+        /* สถานะเริ่มต้น: ซ่อนสมบูรณ์ */
+        opacity: 0; 
+        pointer-events: none; 
+        visibility: hidden; 
+    }
+    
+    .windy-iframe-container.visible {
+        /* สถานะเมื่อเปิด: แสดงผล */
+        visibility: visible;
+    }
+    
+    /* คลาสสำคัญที่ช่วยให้ Leaflet Map ขยับได้เมื่อเปิด Windy แบบโปร่งใส */
+    .windy-iframe-container.clickable-through {
+        pointer-events: none !important; 
+    }
+    .windy-iframe-container iframe {
+        width: 100%;
+        height: 100%;
+        display: block;
+        border: none;
+        pointer-events: auto; 
+    }
+
+    /* สไตล์สำหรับ GeoJSON Layer */
+    .geojson-feature {
+        fillColor: #ffcc00; 
+        color: #ff9900; 
+        weight: 2;
+        opacity: 1;
+        fillOpacity: 0.1; 
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="datetime-box" id="dateTimeBox"></div>
+
+  <div class="windy-iframe-container" id="windyIframeContainer">
+      <iframe 
+        width="100%" 
+        height="100%" 
+        src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=default&metricTemp=default&metricWind=default&zoom=5&overlay=wind&product=ecmwf&level=surface&lat=12.125&lon=101.426" 
+        frameborder="0">
+      </iframe>
+  </div>
+
+  <div class="toggle-container">
+    <span class="toggle-label">แผงควบคุม</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="togglePanel" checked>
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+  
+  <div class="toggle-container-left">
+    <span class="toggle-label">แผงเรดาร์</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="toggleRadarPanel" checked>
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+  
+  <div class="info-box">
+    <div>แผนที่อากาศผิวพื้นไทย: <span id="thaiWeatherStatus">เปิด (80%)</span></div> 
+    <div>ตำแหน่ง: <span id="coordinates">0, 0</span></div>
+    <div>ระดับ: <span id="zoomLevel">4</span></div>
+  </div>
+
+  <div class="panel" id="layerPanel">
+    
+    <div class="panel-section">
+      <h3>Windy: กระแสลม</h3>
+      <div class="layer-control">
+        <label>แสดงแผนที่ลม (Windy) <input type="checkbox" id="toggleWindy"></label>
+      </div>
+      <div class="radar-opacity-control">
+        <label>ความโปร่งใส: <span class="adjustment-value" id="windyOpacityValue">100%</span></label>
+        <input type="range" min="0" max="100" value="100" id="windyOpacitySlider">
+      </div>
+    </div>
+    
+    <div class="panel-section">
+      <h3>แผนที่อากาศผิวพื้นไทย</h3>
+      <div class="layer-control">
+        <label>แผนที่อากาศผิวพื้น <input type="range" min="0" max="1" step="0.05" value="0.8" data-ch="thaiWeather"></label>
+      </div>
+    </div>
+    
+    <div class="panel-section">
+      <h3>Infrared Channels (SE Asia)</h3>
+      <div class="layer-control">
+        <label>SE IR1 <input type="range" min="0" max="1" step="0.05" value="0" data-ch="se1"></label>
+      </div>
+      <div class="layer-control">
+        <label>SE IR2 <input type="range" min="0" max="1" step="0.05" value="0" data-ch="se2"></label>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <h3>Infrared Channels (Indian Ocean)</h3>
+      <div class="layer-control">
+        <label>IN IR1 <input type="range" min="0" max="1" step="0.05" value="0" data-ch="indian1"></label>
+      </div>
+      <div class="layer-control">
+        <label>IN IR2 <input type="range" min="0" max="1" step="0.05" value="0" data-ch="indian2"></label>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <h3>ภาพดาวเทียมแปซิฟิก</h3>
+      <div class="layer-control">
+        <label>ภาพดาวเทียมแปซิฟิก <input type="checkbox" data-satellite="pacific"></label>
+        <div class="radar-opacity-control">
+          <label>โปร่งใส: <span class="adjustment-value" id="pacificOpacityValue">0%</span></label>
+          <input type="range" min="0" max="100" value="0" data-satellite-opacity="pacific">
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <h3>ภาพดาวเทียมอินฟาเรด</h3>
+      <div class="layer-control">
+        <label>Thai Sat IR <input type="checkbox" data-satellite="thaiir"></label>
+        <div class="radar-opacity-control">
+          <label>โปร่งใส: <span class="adjustment-value" id="thaiirOpacityValue">0%</span></label>
+          <input type="range" min="0" max="100" value="0" data-satellite-opacity="thaiir">
+        </div>
+      </div>
+    </div>
+    <button id="btnRefresh">↻ Refresh All</button>
+    <span class="timer" id="timer">Auto-refresh in 60:00</span>
+  </div>
+
+  <div class="panel-left" id="radarPanel">
+    <div class="panel-section">
+      <h3>เรดาร์ตรวจอากาศ</h3>
+      
+      <div class="layer-control">
+        <label>เรดาร์ กรุงเทพฯ 240 กม. <input type="checkbox" data-radar="bangkok"></label>
+        <div class="radar-opacity-control">
+          <label>โปร่งใส: <span class="adjustment-value" id="bangkokOpacityValue">0%</span></label>
+          <input type="range" min="0" max="100" value="0" data-radar-opacity="bangkok">
+        </div>
+      </div>
+      <div class="layer-control">
+        <label>เรดาร์ สกลนคร 480 กม. <input type="checkbox" data-radar="sakon"></label>
+        <div class="radar-opacity-control">
+          <label>โปร่งใส: <span class="adjustment-value" id="sakonOpacityValue">0%</span></label>
+          <input type="range" min="0" max="100" value="0" data-radar-opacity="sakon">
+        </div>
+      </div>
+      <div class="layer-control">
+        <label>เรดาร์ ระนอง 240 กม. <input type="checkbox" data-radar="ranong"></label>
+        <div class="radar-opacity-control">
+          <label>โปร่งใส: <span class="adjustment-value" id="ranongOpacityValue">0%</span></label>
+          <input type="range" min="0" max="100" value="0" data-radar-opacity="ranong">
+        </div>
+      </div>
+      <div class="layer-control">
+        <label>เรดาร์ ชุมพร 240 กม. <input type="checkbox" data-radar="chumphon"></label>
+        <div class="radar-opacity-control">
+          <label>โปร่งใส: <span class="adjustment-value" id="chumphonOpacityValue">0%</span></label>
+          <input type="range" min="0" max="100" value="0" data-radar-opacity="chumphon">
+        </div>
+      </div>
+      <div class="layer-control">
+        <label>เรดาร์ สทิงพระ 240 กม. <input type="checkbox" data-radar="sathingphra"></label>
+        <div class="radar-opacity-control">
+          <label>โปร่งใส: <span class="adjustment-value" id="sathingphraOpacityValue">0%</span></label>
+          <input type="range" min="0" max="100" value="0" data-radar-opacity="sathingphra">
+        </div>
+      </div>
+      <div class="layer-control">
+        <label>เรดาร์ ตาก 240 กม. <input type="checkbox" data-radar="tak"></label>
+        <div class="radar-opacity-control">
+          <label>โปร่งใส: <span class="adjustment-value" id="takOpacityValue">0%</span></label>
+          <input type="range" min="0" max="100" value="0" data-radar-opacity="tak">
+        </div>
+      </div>
+      <div class="layer-control">
+        <label>เรดาร์ เมืองคอน <input type="checkbox" data-radar="muangkhon"></label>
+        <div class="radar-opacity-control">
+          <label>โปร่งใส: <span class="adjustment-value" id="muangkhonOpacityValue">0%</span></label>
+          <input type="range" min="0" max="100" value="0" data-radar-opacity="muangkhon">
+        </div>
+      </div>
+      <div class="layer-control">
+        <label>เรดาร์ หาดใหญ่ 240 กม. <input type="checkbox" data-radar="hatyai"></label>
+        <div class="radar-opacity-control">
+          <label>โปร่งใส: <span class="adjustment-value" id="hatyaiOpacityValue">0%</span></label>
+          <input type="range" min="0" max="100" value="0" data-radar-opacity="hatyai">
+        </div>
+      </div>
+      <div class="layer-control">
+        <label>เรดาร์ สมุทรสงคราม 240 กม. <input type="checkbox" data-radar="samutsongkhram"></label>
+        <div class="radar-opacity-control">
+          <label>โปร่งใส: <span class="adjustment-value" id="samutsongkhramOpacityValue">0%</span></label>
+          <input type="range" min="0" max="100" value="0" data-radar-opacity="samutsongkhram">
+        </div>
+      </div>
+    </div>
+    
+    <div class="panel-section">
+      <h3>นำเข้าขอบเขต (GeoJSON)</h3>
+      <div class="layer-control">
+        <label for="geojsonFileInput">อัปโหลดไฟล์ GeoJSON (.geojson)</label>
+        <input type="file" id="geojsonFileInput" accept=".geojson,.json" style="margin-top:5px; padding:3px; background:#fff; border-radius:4px; border:1px solid #ccc; width:100%;">
+      </div>
+      <div id="geojsonLayerInfo" style="font-size:0.8rem; color:#ccc; margin-top:5px;">ยังไม่มีเลเยอร์ GeoJSON</div>
+      <button id="clearGeoJsonLayer" style="margin-top:10px; background:#a03030;">ล้างเลเยอร์ขอบเขต</button>
+    </div>
+    </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script defer>
+    document.addEventListener("DOMContentLoaded", function(){
+      const BOUNDS_SEASIA = [[-3, 92], [27, 132]];
+      const BOUNDS_INDIAN = [[-5, 76], [25, 116]];
+      
+      const THAI_WEATHER_BOUNDS = [
+        { lat: -20.277176, lng:  55.300454 }, 
+        { lat: 45.793264, lng: 160.048766 }
+      ];
+
+      const CHANNELS = {
+        se1: "http://agora.ex.nii.ac.jp/digital-typhoon/region/SEasia/1/images/640x480/latest.jpg",
+        se2: "http://agora.ex.nii.ac.jp/digital-typhoon/region/SEasia/2/images/640x480/latest.jpg",
+        indian1: "http://agora.ex.nii.ac.jp/digital-typhoon/special/indian_ocean/1/images/640x480/latest.jpg",
+        indian2: "http://agora.ex.nii.ac.jp/digital-typhoon/special/indian_ocean/2/images/640x480/latest.jpg",
+        thaiWeather: "http://www.pbwatch.net/WRS/weather/images/lastest_wc.jpg"
+      };
+
+      const RADAR_DATA = {
+        bangkok: {
+          name: "เรดาร์ กรุงเทพฯ 240 กม.",
+          url: "https://weather.tmd.go.th/svp/svp240LoopHQ.gif",
+          bounds: [[11.50124691377964, 98.10704489936002], [15.85042429690541, 103.4186990619957]]
+        },
+        sakon: {
+          name: "เรดาร์ สกลนคร 480 กม.",
+          url: "https://weather.tmd.go.th/skn/skn480_HQ_Loop.gif",
+          bounds: [[12.72986625005525, 98.16889167850319], [21.50041865936349, 109.0877128590971]]
+        },
+        ranong: {
+          name: "เรดาร์ ระนอง 240 กม.",
+          url: "https://weather.tmd.go.th/rng/rng240Loop.webp",
+          bounds: [[7.530227404791727, 96.55568404195054], [12.17233643474977, 101.8960108144872]]
+        },
+        chumphon: {
+          name: "เรดาร์ ชุมพร 240 กม.",
+          url: "https://weather.tmd.go.th/cmp/cmp240_HQ_Loop.gif",
+          bounds: [[8.261845916245415, 96.43250192402276], [12.66721446227928, 101.838786940187]]
+        },
+        sathingphra: {
+          name: "เรดาร์ สทิงพระ 240 กม.",
+          url: "https://weather.tmd.go.th/stp/stp240Loop.gif",
+          bounds: [[4.460245174686921, 98.27044364168289], [9.585404759685996, 103.7887411707557]]
+        },
+        tak: {
+          name: "เรดาร์ ตาก 240 กม.",
+          url: "https://weather.tmd.go.th/tak/tak240Loop.gif",
+          bounds: [[14.57795507787959, 96.27046202285943], [18.91564025623213, 101.5703879714913]]
+        },
+        muangkhon: {
+          name: "เรดาร์ เมืองคอน",
+          url: "https://semet.uk/loop/NSTLoop.gif",
+          bounds: [[7.595929609239565, 98.66181095811945], [9.697971242406755, 100.6377990348955]]
+        },
+        hatyai: { 
+          name: "เรดาร์ หาดใหญ่ 240 กม.",
+          url: "https://weather.tmd.go.th/hyi/hyi240LoopHQ.gif",
+          bounds: [[4.750055200470851, 97.66454798155837], [9.098416147794605, 103.0061696851627]]
+        },
+        samutsongkhram: { 
+          name: "เรดาร์ สมุทรสงคราม 240 กม.",
+          url: "https://weather.tmd.go.th/skm/skm240LoopHQ.gif",
+          bounds: [[11.19624466693297, 97.1032472522283], [15.58250095831485, 102.4572858272142]] 
+        }
+      };
+      
+      const SATELLITE_DATA = {
+        pacific: {
+          name: "ภาพดาวเทียมแปซิฟิก",
+          url: "http://tropic.ssec.wisc.edu/real-time/westpac/images/xxirgmsbbm.jpg",
+          bounds: [[-5.013375875223006, 91.44098325600054], [55.27059673670675, 188.4561786252415]]
+        },
+        thaiir: {
+          name: "ภาพดาวเทียมอินฟาเรดไทย",
+          url: "http://www.sattmet.tmd.go.th/satmet/thai/loop/enh/anigif.gif",
+          bounds: [[25.898470, 82.919924], [-0.091888, 126.034585]]
+        }
+      };
+
+      const REFRESH_INTERVAL = 3600;
+      function bust(url){ 
+        const urlToBust = url.startsWith('http') ? url : window.location.protocol + url;
+        return urlToBust+"?t="+Date.now(); 
+      }
+
+      const centerLat = (THAI_WEATHER_BOUNDS[0].lat + THAI_WEATHER_BOUNDS[1].lat) / 2;
+      const centerLng = (THAI_WEATHER_BOUNDS[0].lng + THAI_WEATHER_BOUNDS[1].lng) / 2;
+      
+      let map = L.map("map").setView([centerLat, centerLng], 4);
+
+      let baseLayers = {
+        "Google Hybrid (Free)": L.tileLayer(
+          "https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}", {
+            maxZoom: 20,
+            subdomains: ['mt0','mt1','mt2','mt3'],
+            attribution: "Map data © Google"
+          }
+        ),
+        "OpenStreetMap": L.tileLayer(
+          "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          { attribution: "© OSM contributors" }
+        )
+      };
+
+      baseLayers["Google Hybrid (Free)"].addTo(map);
+
+      // Overlays: ตั้งค่าเริ่มต้นเป็น Opacity 0 หรือตามที่ต้องการ (Thai Weather)
+      const overlays = {
+        se1: L.imageOverlay(bust(CHANNELS.se1), BOUNDS_SEASIA, { opacity:0 }), 
+        se2: L.imageOverlay(bust(CHANNELS.se2), BOUNDS_SEASIA, { opacity:0 }),
+        indian1: L.imageOverlay(bust(CHANNELS.indian1), BOUNDS_INDIAN, { opacity:0 }), 
+        indian2: L.imageOverlay(bust(CHANNELS.indian2), BOUNDS_INDIAN, { opacity:0 }),
+        thaiWeather: L.imageOverlay(bust(CHANNELS.thaiWeather), [
+          [THAI_WEATHER_BOUNDS[0].lat, THAI_WEATHER_BOUNDS[0].lng],
+          [THAI_WEATHER_BOUNDS[1].lat, THAI_WEATHER_BOUNDS[1].lng]
+        ], { opacity:0.8 }) // Thai Weather ยังคง Opacity 0.8
+      };
+      
+      // เพิ่มเฉพาะ Thai Weather ที่มี Opacity > 0 เข้าไปในแผนที่
+      overlays.thaiWeather.addTo(map); 
+
+      // เพิ่มเลเยอร์เรดาร์: ทุกเรดาร์เริ่มต้นด้วย Opacity 0 และไม่ถูกเพิ่มเข้าแผนที่
+      const radarOverlays = {};
+      for (const [key, data] of Object.entries(RADAR_DATA)) {
+        const overlay = L.imageOverlay(bust(data.url), data.bounds, { opacity: 0 });
+        radarOverlays[key] = overlay;
+      }
+      
+      // เพิ่มเลเยอร์ดาวเทียม: ทุกดาวเทียมเริ่มต้นด้วย Opacity 0 และไม่ถูกเพิ่มเข้าแผนที่
+      const satelliteOverlays = {};
+      for (const [key, data] of Object.entries(SATELLITE_DATA)) {
+        const overlay = L.imageOverlay(bust(data.url), data.bounds, { opacity: 0 });
+        satelliteOverlays[key] = overlay;
+      }
+      
+      // Toggle panel
+      const panel = document.getElementById("layerPanel");
+      const toggleBtn = document.getElementById("togglePanel");
+      toggleBtn.addEventListener("change", ()=>{
+        const hidden = !toggleBtn.checked;
+        panel.classList.toggle("hidden", hidden);
+      });
+
+      // Toggle panel ซ้ายสำหรับเรดาร์
+      const radarPanel = document.getElementById("radarPanel");
+      const toggleRadarBtn = document.getElementById("toggleRadarPanel");
+      toggleRadarBtn.addEventListener("change", ()=>{
+        const hidden = !toggleRadarBtn.checked;
+        radarPanel.classList.toggle("hidden", hidden);
+      });
+
+      // ส่วนควบคุม Windy 
+      const toggleWindy = document.getElementById("toggleWindy");
+      const windyContainer = document.getElementById("windyIframeContainer");
+      const windyOpacitySlider = document.getElementById("windyOpacitySlider");
+      const windyOpacityValue = document.getElementById("windyOpacityValue");
+
+      function updateWindyOpacityAndPointerEvents() {
+          const opacity = parseInt(windyOpacitySlider.value) / 100;
+          windyOpacityValue.textContent = `${windyOpacitySlider.value}%`;
+          windyContainer.style.opacity = opacity; 
+          
+          const isVisible = toggleWindy.checked;
+          
+          if (isVisible && opacity < 1) {
+              windyContainer.classList.add("clickable-through");
+              windyContainer.style.pointerEvents = 'none'; 
+          } else if (isVisible && opacity === 1) {
+              windyContainer.classList.remove("clickable-through");
+              windyContainer.style.pointerEvents = 'auto'; 
+          } else {
+             windyContainer.classList.remove("clickable-through");
+          }
+      }
+
+      windyOpacitySlider.addEventListener("input", updateWindyOpacityAndPointerEvents);
+
+      toggleWindy.addEventListener("change", function() {
+          if (this.checked) {
+              windyContainer.classList.add("visible");
+              windyContainer.style.pointerEvents = 'auto'; 
+          } else {
+              windyContainer.classList.remove("visible");
+              windyContainer.style.pointerEvents = 'none'; 
+              windyContainer.classList.remove("clickable-through"); 
+          }
+          updateWindyOpacityAndPointerEvents(); 
+      });
+      
+      updateWindyOpacityAndPointerEvents(); 
+
+      // GeoJSON Import Logic
+      let geoJsonLayer = null;
+      const geojsonFileInput = document.getElementById('geojsonFileInput');
+      const geojsonLayerInfo = document.getElementById('geojsonLayerInfo');
+      const clearGeoJsonLayerBtn = document.getElementById('clearGeoJsonLayer');
+
+      function styleGeoJSONFeature(feature) {
+          return {
+              fillColor: '#ffcc00', 
+              color: '#ff9900',
+              weight: 2,
+              opacity: 1,
+              fillOpacity: 0.1
+          };
+      }
+
+      function onEachFeature(feature, layer) {
+          if (feature.properties) {
+              const name = feature.properties.name || feature.properties.NAME_TH || 'ไม่มีชื่อ';
+              layer.bindPopup("<b>ขอบเขต:</b> " + name);
+          }
+      }
+
+      geojsonFileInput.addEventListener('change', function(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = function(e) {
+              try {
+                  const geojsonData = JSON.parse(e.target.result);
+                  
+                  if (geoJsonLayer) {
+                      map.removeLayer(geoJsonLayer);
+                  }
+
+                  geoJsonLayer = L.geoJSON(geojsonData, {
+                      style: styleGeoJSONFeature,
+                      onEachFeature: onEachFeature
+                  }).addTo(map);
+
+                  map.fitBounds(geoJsonLayer.getBounds());
+                  
+                  geojsonLayerInfo.textContent = `แสดงขอบเขต: ${geojsonData.features.length} รายการ`;
+                  alert(`นำเข้า GeoJSON สำเร็จ: ${geojsonData.features.length} รายการ`);
+
+              } catch (error) {
+                  console.error("Error processing GeoJSON file:", error);
+                  geojsonLayerInfo.textContent = "เกิดข้อผิดพลาดในการประมวลผลไฟล์!";
+                  alert("เกิดข้อผิดพลาดในการประมวลผลไฟล์ GeoJSON กรุณาตรวจสอบรูปแบบไฟล์");
+              }
+          };
+          reader.readAsText(file);
+      });
+
+      clearGeoJsonLayerBtn.addEventListener('click', function() {
+          if (geoJsonLayer) {
+              map.removeLayer(geoJsonLayer);
+              geoJsonLayer = null;
+              geojsonLayerInfo.textContent = 'เลเยอร์ GeoJSON ถูกลบแล้ว';
+              geojsonFileInput.value = ''; 
+          }
+      });
+      
+      // ควบคุมการแสดงเลเยอร์ดาวเทียม/เรดาร์ และ Opacity
+      document.querySelectorAll("#layerPanel input[type=range][data-ch]").forEach(slider=>{
+        slider.addEventListener("input", ()=>{
+          const ch = slider.dataset.ch;
+          const opacity = Number(slider.value);
+          
+          if (opacity > 0 && !map.hasLayer(overlays[ch])) {
+              overlays[ch].addTo(map); // เพิ่มเลเยอร์เฉพาะเมื่อ Opacity > 0
+          } else if (opacity === 0 && map.hasLayer(overlays[ch]) && ch !== 'thaiWeather') {
+              // ลบเลเยอร์ออกเมื่อ Opacity เป็น 0 (ยกเว้น Thai Weather ที่เราให้อยู่ตลอด)
+              map.removeLayer(overlays[ch]);
+          }
+          
+          overlays[ch].setOpacity(opacity);
+          
+          if (ch === 'thaiWeather') {
+            document.getElementById('thaiWeatherStatus').textContent = 
+              opacity > 0 ? 'เปิด (' + Math.round(opacity * 100) + '%)' : 'ปิด';
+          }
+        });
+      });
+      
+      document.querySelectorAll("#radarPanel input[type=checkbox]").forEach(checkbox => {
+        checkbox.addEventListener("change", function() {
+          const radarId = this.dataset.radar;
+          if (this.checked) {
+            // เมื่อติ๊กถูก ให้เพิ่มเลเยอร์ และตั้งค่า opacity ตาม slider (ซึ่งตอนนี้เป็น 0)
+            radarOverlays[radarId].addTo(map); 
+            const slider = document.querySelector(`input[data-radar-opacity="${radarId}"]`);
+            const opacity = parseInt(slider.value) / 100;
+            // ตั้งค่า opacity ให้เป็น 0 (ตามค่าเริ่มต้น) แต่ถ้าอยากให้เปิดแล้วมีค่าทันที ให้เปลี่ยนเป็น 0.8
+            // radarOverlays[radarId].setOpacity(0.8); 
+            // document.getElementById(`${radarId}OpacityValue`).textContent = '80%';
+            // slider.value = '80';
+          } else {
+            map.removeLayer(radarOverlays[radarId]);
+          }
+        });
+      });
+
+      document.querySelectorAll("#radarPanel input[data-radar-opacity]").forEach(slider => {
+        slider.addEventListener("input", function() {
+          const radarId = this.dataset.radarOpacity;
+          const opacity = parseInt(this.value) / 100;
+          document.getElementById(`${radarId}OpacityValue`).textContent = `${this.value}%`;
+          
+          if (radarOverlays[radarId]) {
+            // ถ้าเลเยอร์ยังไม่ถูกเพิ่มเข้าแผนที่ แต่ผู้ใช้เลื่อน Opacity ให้เพิ่มเข้าไป
+            if (opacity > 0 && !document.querySelector(`input[data-radar="${radarId}"]`).checked) {
+               document.querySelector(`input[data-radar="${radarId}"]`).checked = true;
+               radarOverlays[radarId].addTo(map);
+            }
+            radarOverlays[radarId].setOpacity(opacity);
+          }
+        });
+      });
+      
+      // ควบคุมการแสดงดาวเทียม (คล้ายกับเรดาร์)
+      document.querySelectorAll("#layerPanel input[type=checkbox][data-satellite]").forEach(checkbox => {
+        checkbox.addEventListener("change", function() {
+          const satelliteId = this.dataset.satellite;
+          if (this.checked) {
+            satelliteOverlays[satelliteId].addTo(map);
+            // ตั้งค่า Opacity ตาม Slider (ซึ่งเริ่มต้นเป็น 0)
+          } else {
+            map.removeLayer(satelliteOverlays[satelliteId]);
+          }
+        });
+      });
+
+      document.querySelectorAll("#layerPanel input[data-satellite-opacity]").forEach(slider => {
+        slider.addEventListener("input", function() {
+          const satelliteId = this.dataset.satelliteOpacity;
+          const opacity = parseInt(this.value) / 100;
+          document.getElementById(`${satelliteId}OpacityValue`).textContent = `${this.value}%`;
+          
+          if (satelliteOverlays[satelliteId]) {
+            // ถ้าเลเยอร์ยังไม่ถูกเพิ่มเข้าแผนที่ แต่ผู้ใช้เลื่อน Opacity ให้เพิ่มเข้าไป
+            if (opacity > 0 && !document.querySelector(`input[data-satellite="${satelliteId}"]`).checked) {
+               document.querySelector(`input[data-satellite="${satelliteId}"]`).checked = true;
+               satelliteOverlays[satelliteId].addTo(map);
+            }
+            satelliteOverlays[satelliteId].setOpacity(opacity);
+          }
+        });
+      });
+
+
+      // Refresh logic
+      function playBeep(){
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type="sine"; osc.frequency.value=880;
+          gain.gain.value=0.1;
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(); osc.stop(ctx.currentTime+0.3);
+        } catch(e) {}
+      }
+
+      let countdown = REFRESH_INTERVAL;
+      const timerEl = document.getElementById("timer");
+
+      function refreshAll(){
+        // รีเฟรชเฉพาะเลเยอร์ที่กำลังแสดงผลอยู่
+        for (const [id, ol] of Object.entries(overlays)){
+          if (map.hasLayer(ol)){ ol.setUrl(bust(CHANNELS[id])); }
+        }
+        
+        for (const [id, ol] of Object.entries(radarOverlays)) {
+          if (map.hasLayer(ol)) { ol.setUrl(bust(RADAR_DATA[id].url)); }
+        }
+        
+        for (const [id, ol] of Object.entries(satelliteOverlays)) {
+          if (map.hasLayer(ol)) { ol.setUrl(bust(SATELLITE_DATA[id].url)); }
+        }
+        
+        countdown = REFRESH_INTERVAL;
+        playBeep();
+      }
+
+      function updateTimer(){
+        const m = String(Math.floor(countdown/60)).padStart(2,"0");
+        const s = String(countdown%60).padStart(2,"0");
+        timerEl.textContent = `Auto-refresh in ${m}:${s}`;
+        if(countdown <= 0){ refreshAll(); }
+        countdown--;
+      }
+
+      document.getElementById("btnRefresh").addEventListener("click", refreshAll);
+
+      setInterval(updateTimer, 1000);
+      updateTimer();
+
+      // Update Thai datetime
+      const dtBox = document.getElementById("dateTimeBox");
+      function updateDateTime(){
+        const now = new Date();
+        const thai = now.toLocaleString("th-TH", { timeZone:"Asia/Bangkok", dateStyle:"full", timeStyle:"medium" });
+        dtBox.textContent = thai;
+      }
+      updateDateTime();
+      setInterval(updateDateTime, 1000);
+      
+      // อัพเดทพิกัดเมื่อเลื่อนแผนที่
+      function updateCoordinates(e) {
+        const center = map.getCenter();
+        document.getElementById('coordinates').textContent = 
+          center.lat.toFixed(4) + ', ' + center.lng.toFixed(4);
+        document.getElementById('zoomLevel').textContent = map.getZoom();
+      }
+      
+      map.on('move', updateCoordinates);
+      map.on('zoom', updateCoordinates);
+      updateCoordinates();
+      
+      // สร้าง Object สำหรับ L.control.layers โดยใช้ชื่อเรดาร์
+      const radarControlLayers = {};
+      for (const [key, data] of Object.entries(RADAR_DATA)) {
+          radarControlLayers[data.name] = radarOverlays[key];
+      }
+
+      // เพิ่มการควบคุมเลเยอร์ฐาน
+      const layerControl = L.control.layers(baseLayers, {
+        "แผนที่อากาศผิวพื้นไทย": overlays.thaiWeather,
+        "SE Asia IR1": overlays.se1,
+        "Indian Ocean IR1": overlays.indian1,
+        "ภาพดาวเทียมอินฟาเรดไทย": satelliteOverlays.thaiir,
+        "ภาพดาวเทียมแปซิฟิก": satelliteOverlays.pacific,
+        ...radarControlLayers // เพิ่มเรดาร์ทั้งหมด
+      }).addTo(map);
+    });
+  </script>
+</body>
+</html>
