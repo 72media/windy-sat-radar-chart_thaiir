@@ -442,6 +442,13 @@
           <input type="range" min="0" max="100" value="0" data-radar-opacity="samutsongkhram">
         </div>
       </div>
+      <div class="layer-control">
+        <label>เรดาร์ ลำพูน 240 กม. <input type="checkbox" data-radar="lamphun"></label>
+        <div class="radar-opacity-control">
+          <label>โปร่งใส: <span class="adjustment-value" id="lamphunOpacityValue">0%</span></label>
+          <input type="range" min="0" max="100" value="0" data-radar-opacity="lamphun">
+        </div>
+      </div>
     </div>
     
     <div class="panel-section">
@@ -519,6 +526,12 @@
           name: "เรดาร์ สมุทรสงคราม 240 กม.",
           url: "https://weather.tmd.go.th/skm/skm240LoopHQ.gif",
           bounds: [[11.19624466693297, 97.1032472522283], [15.58250095831485, 102.4572858272142]] 
+        },
+        // เพิ่มชุดข้อมูลของ เรดาร์ ลำพูน 240 กม.
+        lamphun: {
+          name: "เรดาร์ ลำพูน 240 กม.",
+          url: "https://weather.tmd.go.th/lmp/lmp240_HQ_Loop.gif",
+          bounds: [[16.328516, 96.184325], [20.754023, 101.788752]]
         }
       };
       
@@ -741,10 +754,6 @@
             radarOverlays[radarId].addTo(map); 
             const slider = document.querySelector(`input[data-radar-opacity="${radarId}"]`);
             const opacity = parseInt(slider.value) / 100;
-            // ตั้งค่า opacity ให้เป็น 0 (ตามค่าเริ่มต้น) แต่ถ้าอยากให้เปิดแล้วมีค่าทันที ให้เปลี่ยนเป็น 0.8
-            // radarOverlays[radarId].setOpacity(0.8); 
-            // document.getElementById(`${radarId}OpacityValue`).textContent = '80%';
-            // slider.value = '80';
           } else {
             map.removeLayer(radarOverlays[radarId]);
           }
@@ -881,7 +890,7 @@
         "Indian Ocean IR1": overlays.indian1,
         "ภาพดาวเทียมอินฟาเรดไทย": satelliteOverlays.thaiir,
         "ภาพดาวเทียมแปซิฟิก": satelliteOverlays.pacific,
-        ...radarControlLayers // เพิ่มเรดาร์ทั้งหมด
+        ...radarControlLayers // เพิ่มเรดาร์ทั้งหมดรวมถึงลำพูนด้วยอัตโนมัติ
       }).addTo(map);
     });
   </script>
